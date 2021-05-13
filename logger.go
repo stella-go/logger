@@ -1,0 +1,208 @@
+// Copyright 2010-2021 the original author or authors.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// 	http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package logger
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+type level int
+
+func (level level) String() string {
+	switch level {
+	case TraceLevel:
+		return "TRACE"
+	case DebugLevel:
+		return "DEBUG"
+	case InfoLevel:
+		return "INFO "
+	case WarnLevel:
+		return "WARN "
+	case ErrorLevel:
+		return "ERROR"
+	case FatalLevel:
+		return "FATAL"
+	case PanicLevel:
+		return "PANIC"
+	default:
+		return "LEVEL"
+	}
+}
+
+const (
+	TraceLevel level = iota
+	DebugLevel
+	InfoLevel
+	WarnLevel
+	ErrorLevel
+	FatalLevel
+	PanicLevel
+)
+
+type Entry struct {
+	Tag     string
+	Level   level
+	Message string
+}
+
+type LogFormatter interface {
+	Format(e *Entry) []byte
+}
+
+type DefaultFormatter struct{}
+
+func (*DefaultFormatter) Format(e *Entry) []byte {
+	ts := time.Now().Format("06-01-02.15:04:05.999")
+	ts = ts + "00000000000000000000000"
+	timestamp := ts[:21]
+	goroutine := gid()
+	msg := fmt.Sprintf("%s [%s] %s %s - %s\n", timestamp, goroutine, strings.ToUpper(e.Level.String()), e.Tag, e.Message)
+	return []byte(msg)
+}
+
+func gid() string {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return fmt.Sprintf("%s-%d", "goroutine", n)
+}
+
+type internalLogger struct {
+	level     level
+	formatter LogFormatter
+	writer    io.Writer
+	lock      sync.Mutex
+}
+
+func (l *internalLogger) print(e *Entry) (int, error) {
+	if e.Level < l.level {
+		return 0, nil
+	}
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	p := l.formatter.Format(e)
+	return l.writer.Write(p)
+}
+
+type Logger struct {
+	loggerName     string
+	internalLogger *internalLogger
+}
+
+func (p *Logger) DEBUG(format string, arr ...interface{}) {
+	arr, err := splitError(arr...)
+	msg := fmt.Sprintf(format, arr...)
+	if err != nil {
+		msg = fmt.Sprintf("%s %v", msg, err)
+	}
+	entry := &Entry{
+		Tag:     p.loggerName,
+		Level:   DebugLevel,
+		Message: msg,
+	}
+	p.internalLogger.print(entry)
+}
+
+func (p *Logger) INFO(format string, arr ...interface{}) {
+	arr, err := splitError(arr...)
+	msg := fmt.Sprintf(format, arr...)
+	if err != nil {
+		msg = fmt.Sprintf("%s %v", msg, err)
+	}
+	entry := &Entry{
+		Tag:     p.loggerName,
+		Level:   InfoLevel,
+		Message: msg,
+	}
+	p.internalLogger.print(entry)
+}
+
+func (p *Logger) WARN(format string, arr ...interface{}) {
+	arr, err := splitError(arr...)
+	msg := fmt.Sprintf(format, arr...)
+	if err != nil {
+		msg = fmt.Sprintf("%s %v", msg, err)
+	}
+	entry := &Entry{
+		Tag:     p.loggerName,
+		Level:   WarnLevel,
+		Message: msg,
+	}
+	p.internalLogger.print(entry)
+}
+
+func (p *Logger) ERROR(format string, arr ...interface{}) {
+	arr, err := splitError(arr...)
+	msg := fmt.Sprintf(format, arr...)
+	if err != nil {
+		msg = fmt.Sprintf("%s %v", msg, err)
+	}
+	entry := &Entry{
+		Tag:     p.loggerName,
+		Level:   ErrorLevel,
+		Message: msg,
+	}
+	p.internalLogger.print(entry)
+}
+
+func splitError(arr ...interface{}) ([]interface{}, error) {
+	var err error
+	if len(arr) > 0 {
+		last := arr[len(arr)-1]
+		switch last := last.(type) {
+		case error:
+			arr = arr[:len(arr)-1]
+			err = last
+		}
+	}
+	return arr, err
+}
+
+func NewDefaultInternalLogger(level level, filePath string, fileName string) *internalLogger {
+	rotateWriter, _ := NewRotateWriter(filePath, fileName)
+	logger := &internalLogger{
+		level:     level,
+		formatter: &DefaultFormatter{},
+		writer:    rotateWriter,
+		lock:      sync.Mutex{},
+	}
+	return logger
+}
+
+func NewInternalLogger(level level, formatter LogFormatter, writer io.Writer) *internalLogger {
+	logger := &internalLogger{
+		level:     level,
+		formatter: formatter,
+		writer:    writer,
+		lock:      sync.Mutex{},
+	}
+	return logger
+}
+
+func GetLogger(name string, logger *internalLogger) *Logger {
+	return &Logger{
+		loggerName:     name,
+		internalLogger: logger,
+	}
+}

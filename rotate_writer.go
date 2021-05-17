@@ -32,13 +32,6 @@ const (
 	FileSizeG = 1024 * FileSizeM
 )
 
-type rotateFlag int
-
-const (
-	flagRoateDaily rotateFlag = 1 << iota
-	flagRoateSize
-)
-
 type RotateConfig struct {
 	Enable      bool
 	Daily       bool
@@ -87,7 +80,6 @@ func (p sfis) Swap(i, j int) {
 }
 
 func (w *RotateWriter) rotate() {
-	time.Time.Now()
 	if w.dest == os.Stdout || w.dest == os.Stderr {
 		return
 	}

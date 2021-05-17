@@ -25,9 +25,9 @@ import (
 	"time"
 )
 
-type level int
+type Level int
 
-func (level level) String() string {
+func (level Level) String() string {
 	switch level {
 	case TraceLevel:
 		return "TRACE"
@@ -48,7 +48,7 @@ func (level level) String() string {
 	}
 }
 
-func Parse(slevel string) level {
+func Parse(slevel string) Level {
 	slevel = strings.TrimSpace(strings.ToUpper(slevel))
 	switch slevel {
 	case "TRACE":
@@ -71,7 +71,7 @@ func Parse(slevel string) level {
 }
 
 const (
-	TraceLevel level = iota
+	TraceLevel Level = iota
 	DebugLevel
 	InfoLevel
 	WarnLevel
@@ -82,7 +82,7 @@ const (
 
 type Entry struct {
 	Tag     string
-	Level   level
+	Level   Level
 	Message string
 }
 
@@ -110,14 +110,14 @@ func gid() string {
 	return fmt.Sprintf("%s-%d", "goroutine", n)
 }
 
-type internalLogger struct {
-	level     level
+type InternalLogger struct {
+	level     Level
 	formatter LogFormatter
 	writer    io.Writer
 	lock      sync.Mutex
 }
 
-func (l *internalLogger) print(e *Entry) (int, error) {
+func (l *InternalLogger) print(e *Entry) (int, error) {
 	if e.Level < l.level {
 		return 0, nil
 	}
@@ -129,7 +129,7 @@ func (l *internalLogger) print(e *Entry) (int, error) {
 
 type Logger struct {
 	loggerName     string
-	internalLogger *internalLogger
+	internalLogger *InternalLogger
 }
 
 func (p *Logger) DEBUG(format string, arr ...interface{}) {
@@ -201,9 +201,9 @@ func splitError(arr ...interface{}) ([]interface{}, error) {
 	return arr, err
 }
 
-func NewDefaultInternalLogger(level level, filePath string, fileName string) *internalLogger {
+func NewDefaultInternalLogger(level Level, filePath string, fileName string) *InternalLogger {
 	rotateWriter, _ := NewRotateWriter(filePath, fileName)
-	logger := &internalLogger{
+	logger := &InternalLogger{
 		level:     level,
 		formatter: &DefaultFormatter{},
 		writer:    rotateWriter,
@@ -212,8 +212,8 @@ func NewDefaultInternalLogger(level level, filePath string, fileName string) *in
 	return logger
 }
 
-func NewInternalLogger(level level, formatter LogFormatter, writer io.Writer) *internalLogger {
-	logger := &internalLogger{
+func NewInternalLogger(level Level, formatter LogFormatter, writer io.Writer) *InternalLogger {
+	logger := &InternalLogger{
 		level:     level,
 		formatter: formatter,
 		writer:    writer,
@@ -222,7 +222,7 @@ func NewInternalLogger(level level, formatter LogFormatter, writer io.Writer) *i
 	return logger
 }
 
-func GetLogger(name string, logger *internalLogger) *Logger {
+func GetLogger(name string, logger *InternalLogger) *Logger {
 	return &Logger{
 		loggerName:     name,
 		internalLogger: logger,

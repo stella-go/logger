@@ -48,6 +48,28 @@ func (level level) String() string {
 	}
 }
 
+func Parse(slevel string) level {
+	slevel = strings.TrimSpace(strings.ToUpper(slevel))
+	switch slevel {
+	case "TRACE":
+		return TraceLevel
+	case "DEBUG":
+		return DebugLevel
+	case "INFO":
+		return InfoLevel
+	case "WARN":
+		return WarnLevel
+	case "ERROR":
+		return ErrorLevel
+	case "FATAL":
+		return FatalLevel
+	case "PANIC":
+		return PanicLevel
+	default:
+		return InfoLevel
+	}
+}
+
 const (
 	TraceLevel level = iota
 	DebugLevel

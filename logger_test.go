@@ -22,9 +22,25 @@ import (
 	"github.com/stella-go/logger"
 )
 
-func TestNewDefaultInternalLogger(b *testing.T) {
-	ilogger := logger.NewDefaultInternalLogger(logger.InfoLevel, "./logs", "stella-go.log")
-	logger := logger.GetLogger("Bench", ilogger)
+func TestDefaultRootLogger(t *testing.T) {
+	os.Setenv("STELLA_LOG_LEVEL", "INFO")
+	logger.DEBUG("12345678901234567890123456789012")
+	logger.INFO("12345678901234567890123456789012")
+	logger.WARN("12345678901234567890123456789012")
+	logger.ERROR("12345678901234567890123456789012", fmt.Errorf("this is an error"))
+}
+
+func TestRotateRootLogger(t *testing.T) {
+	logger := logger.NewRotateRootLogger(logger.InfoLevel, "./logs", "stella-go.log")
+	logger.DEBUG("12345678901234567890123456789012")
+	logger.INFO("12345678901234567890123456789012")
+	logger.WARN("12345678901234567890123456789012")
+	logger.ERROR("12345678901234567890123456789012", fmt.Errorf("this is an error"))
+}
+
+func TestNewDefaultInternalLogger(t *testing.T) {
+	rootLogger := logger.NewRotateRootLogger(logger.InfoLevel, "./logs", "stella-go.log")
+	logger := rootLogger.GetLogger("Bench")
 	logger.DEBUG("12345678901234567890123456789012")
 	logger.INFO("12345678901234567890123456789012")
 	logger.WARN("12345678901234567890123456789012")
@@ -37,9 +53,9 @@ func (*NopFormatter) Format(e *logger.Entry) []byte {
 	return []byte(e.Message)
 }
 
-func TestNewInternalLogger(b *testing.T) {
-	ilogger := logger.NewInternalLogger(logger.InfoLevel, &NopFormatter{}, os.Stdout)
-	logger := logger.GetLogger("Bench", ilogger)
+func TestNewInternalLogger(t *testing.T) {
+	rootLogger := logger.NewRootLogger(logger.InfoLevel, &NopFormatter{}, os.Stdout)
+	logger := rootLogger.GetLogger("Bench")
 	logger.DEBUG("12345678901234567890123456789012")
 	logger.INFO("12345678901234567890123456789012")
 	logger.WARN("12345678901234567890123456789012")
@@ -48,8 +64,8 @@ func TestNewInternalLogger(b *testing.T) {
 
 func BenchmarkLogger(b *testing.B) {
 	b.ReportAllocs()
-	ilogger := logger.NewDefaultInternalLogger(logger.DebugLevel, "./logs", "stella-go-10b.log")
-	logger := logger.GetLogger("Bench", ilogger)
+	rootLogger := logger.NewRotateRootLogger(logger.DebugLevel, "./logs", "stella-go.log")
+	logger := rootLogger.GetLogger("Bench")
 	for i := 0; i < b.N; i++ {
 		logger.INFO("12345678901234567890123456789012")
 	}

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -188,6 +189,13 @@ func (p *Logger) ERROR(format string, arr ...interface{}) {
 	p.internalLogger.print(entry)
 }
 
+func (p *Logger) GetLogger(name string) *Logger {
+	return &Logger{
+		loggerName:     name,
+		internalLogger: p.internalLogger,
+	}
+}
+
 func splitError(arr ...interface{}) ([]interface{}, error) {
 	var err error
 	if len(arr) > 0 {
@@ -201,7 +209,7 @@ func splitError(arr ...interface{}) ([]interface{}, error) {
 	return arr, err
 }
 
-func NewDefaultInternalLogger(level Level, filePath string, fileName string) *InternalLogger {
+func NewRotateRootLogger(level Level, filePath string, fileName string) *Logger {
 	rotateWriter, _ := NewRotateWriter(filePath, fileName)
 	logger := &InternalLogger{
 		level:     level,
@@ -209,22 +217,66 @@ func NewDefaultInternalLogger(level Level, filePath string, fileName string) *In
 		writer:    rotateWriter,
 		lock:      sync.Mutex{},
 	}
-	return logger
+	return &Logger{
+		loggerName:     "ROOT",
+		internalLogger: logger,
+	}
 }
 
-func NewInternalLogger(level Level, formatter LogFormatter, writer io.Writer) *InternalLogger {
+func NewRootLogger(level Level, formatter LogFormatter, writer io.Writer) *Logger {
 	logger := &InternalLogger{
 		level:     level,
 		formatter: formatter,
 		writer:    writer,
 		lock:      sync.Mutex{},
 	}
-	return logger
-}
-
-func GetLogger(name string, logger *InternalLogger) *Logger {
 	return &Logger{
-		loggerName:     name,
+		loggerName:     "ROOT",
 		internalLogger: logger,
 	}
+}
+
+var defaultRootLogger *Logger
+var defaultRootLoggerOnce sync.Once
+
+func xInit() {
+	defaultRootLoggerOnce.Do(func() {
+		slevel := os.Getenv("STELLA_LOG_LEVEL")
+		if slevel == "" {
+			slevel = "DEBUG"
+		}
+		spath := os.Getenv("STELLA_LOG_PATH")
+		if spath == "" {
+			spath = "./logs"
+		}
+		sfile := os.Getenv("STELLA_LOG_FILE")
+		if sfile == "" {
+			sfile = "log.txt"
+		}
+		level := Parse(slevel)
+		rotateWriter, _ := NewRotateWriter(spath, sfile)
+		writer := io.MultiWriter(os.Stdout, rotateWriter)
+
+		defaultRootLogger = NewRootLogger(level, &DefaultFormatter{}, writer)
+	})
+}
+
+func DEBUG(format string, arr ...interface{}) {
+	xInit()
+	defaultRootLogger.DEBUG(format, arr...)
+}
+
+func INFO(format string, arr ...interface{}) {
+	xInit()
+	defaultRootLogger.INFO(format, arr...)
+}
+
+func WARN(format string, arr ...interface{}) {
+	xInit()
+	defaultRootLogger.WARN(format, arr...)
+}
+
+func ERROR(format string, arr ...interface{}) {
+	xInit()
+	defaultRootLogger.ERROR(format, arr...)
 }

@@ -280,3 +280,8 @@ func ERROR(format string, arr ...interface{}) {
 	xInit()
 	defaultRootLogger.ERROR(format, arr...)
 }
+
+func GetLogger(name string) *Logger {
+	xInit()
+	return defaultRootLogger.GetLogger(name)
+}

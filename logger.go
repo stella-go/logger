@@ -241,15 +241,15 @@ var defaultRootLoggerOnce sync.Once
 
 func xInit() {
 	defaultRootLoggerOnce.Do(func() {
-		slevel := os.Getenv("STELLA_LOG_LEVEL")
+		slevel := os.Getenv("STELLA_LOGGER_LEVEL")
 		if slevel == "" {
 			slevel = "DEBUG"
 		}
-		spath := os.Getenv("STELLA_LOG_PATH")
+		spath := os.Getenv("STELLA_LOGGER_PATH")
 		if spath == "" {
 			spath = "./logs"
 		}
-		sfile := os.Getenv("STELLA_LOG_FILE")
+		sfile := os.Getenv("STELLA_LOGGER_FILE")
 		if sfile == "" {
 			sfile = "log.txt"
 		}

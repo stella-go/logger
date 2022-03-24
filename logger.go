@@ -94,11 +94,11 @@ type LogFormatter interface {
 type DefaultFormatter struct{}
 
 func (*DefaultFormatter) Format(e *Entry) []byte {
-	ts := time.Now().Format("06-01-02.15:04:05.999")
+	ts := time.Now().Format("06-01-02.15:04:05.000")
 	ts = ts + "00000000000000000000000"
 	timestamp := ts[:21]
 	goroutine := gid()
-	msg := fmt.Sprintf("%s [%s] %s %s - %s\n", timestamp, goroutine, strings.ToUpper(e.Level.String()), e.Tag, e.Message)
+	msg := fmt.Sprintf("%s [%s] %s %s - %s\n", timestamp, goroutine, e.Level.String(), e.Tag, e.Message)
 	return []byte(msg)
 }
 
@@ -128,71 +128,86 @@ func (l *InternalLogger) print(e *Entry) (int, error) {
 	return l.writer.Write(p)
 }
 
+func (l *InternalLogger) write(p []byte) (int, error) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	return l.writer.Write(p)
+}
+
 type Logger struct {
 	loggerName     string
 	internalLogger *InternalLogger
 }
 
-func (p *Logger) DEBUG(format string, arr ...interface{}) {
+func (l *Logger) DEBUG(format string, arr ...interface{}) {
 	arr, err := splitError(arr...)
 	msg := fmt.Sprintf(format, arr...)
 	if err != nil {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     p.loggerName,
+		Tag:     l.loggerName,
 		Level:   DebugLevel,
 		Message: msg,
 	}
-	p.internalLogger.print(entry)
+	l.internalLogger.print(entry)
 }
 
-func (p *Logger) INFO(format string, arr ...interface{}) {
+func (l *Logger) Printf(format string, arr ...interface{}) (int, error) {
+	msg := fmt.Sprintf(format, arr...)
+	return l.internalLogger.write([]byte(msg))
+}
+
+func (l *Logger) Write(p []byte) (n int, err error) {
+	return l.internalLogger.write(p)
+}
+
+func (l *Logger) INFO(format string, arr ...interface{}) {
 	arr, err := splitError(arr...)
 	msg := fmt.Sprintf(format, arr...)
 	if err != nil {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     p.loggerName,
+		Tag:     l.loggerName,
 		Level:   InfoLevel,
 		Message: msg,
 	}
-	p.internalLogger.print(entry)
+	l.internalLogger.print(entry)
 }
 
-func (p *Logger) WARN(format string, arr ...interface{}) {
+func (l *Logger) WARN(format string, arr ...interface{}) {
 	arr, err := splitError(arr...)
 	msg := fmt.Sprintf(format, arr...)
 	if err != nil {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     p.loggerName,
+		Tag:     l.loggerName,
 		Level:   WarnLevel,
 		Message: msg,
 	}
-	p.internalLogger.print(entry)
+	l.internalLogger.print(entry)
 }
 
-func (p *Logger) ERROR(format string, arr ...interface{}) {
+func (l *Logger) ERROR(format string, arr ...interface{}) {
 	arr, err := splitError(arr...)
 	msg := fmt.Sprintf(format, arr...)
 	if err != nil {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     p.loggerName,
+		Tag:     l.loggerName,
 		Level:   ErrorLevel,
 		Message: msg,
 	}
-	p.internalLogger.print(entry)
+	l.internalLogger.print(entry)
 }
 
-func (p *Logger) GetLogger(name string) *Logger {
+func (l *Logger) GetLogger(name string) *Logger {
 	return &Logger{
 		loggerName:     name,
-		internalLogger: p.internalLogger,
+		internalLogger: l.internalLogger,
 	}
 }
 
@@ -243,7 +258,7 @@ func xInit() {
 	defaultRootLoggerOnce.Do(func() {
 		slevel := os.Getenv("STELLA_LOGGER_LEVEL")
 		if slevel == "" {
-			slevel = "DEBUG"
+			slevel = "INFO"
 		}
 		spath := os.Getenv("STELLA_LOGGER_PATH")
 		if spath == "" {

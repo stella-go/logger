@@ -40,11 +40,21 @@ func TestRotateRootLogger(t *testing.T) {
 
 func TestNewDefaultInternalLogger(t *testing.T) {
 	rootLogger := logger.NewRotateRootLogger(logger.InfoLevel, "./logs", "stella-go.log")
-	logger := rootLogger.GetLogger("Bench")
+	logger := rootLogger.GetLogger("Test")
 	logger.DEBUG("12345678901234567890123456789012")
 	logger.INFO("12345678901234567890123456789012")
 	logger.WARN("12345678901234567890123456789012")
 	logger.ERROR("12345678901234567890123456789012", fmt.Errorf("this is an error"))
+}
+
+func TestPrintf(t *testing.T) {
+	rootLogger := logger.NewRotateRootLogger(logger.InfoLevel, "./logs", "stella-go.log")
+	rootLogger.Printf("1234567890123%s4567890123456789012", "*****")
+}
+
+func TestWrite(t *testing.T) {
+	rootLogger := logger.NewRotateRootLogger(logger.InfoLevel, "./logs", "stella-go.log")
+	rootLogger.Write([]byte("1234567890123%s4567890123456789012"))
 }
 
 type NopFormatter struct{}

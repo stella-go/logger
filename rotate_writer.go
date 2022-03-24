@@ -115,8 +115,8 @@ func (w *RotateWriter) rotate() {
 				if err != nil {
 					print("ERROR", "Parse file index error: %v", err)
 				}
-				if i > index {
-					index = i
+				if i >= index {
+					index = i + 1
 				}
 			}
 		}

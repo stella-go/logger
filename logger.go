@@ -118,7 +118,7 @@ type InternalLogger struct {
 	lock      sync.Mutex
 }
 
-func (l *InternalLogger) print(e *Entry) (int, error) {
+func (l *InternalLogger) formatWrite(e *Entry) (int, error) {
 	if e.Level < l.level {
 		return 0, nil
 	}
@@ -139,6 +139,15 @@ type Logger struct {
 	internalLogger *InternalLogger
 }
 
+func (l *Logger) Printf(format string, arr ...interface{}) (int, error) {
+	msg := fmt.Sprintf(format, arr...)
+	return l.internalLogger.write([]byte(msg))
+}
+
+func (l *Logger) Write(p []byte) (n int, err error) {
+	return l.internalLogger.write(p)
+}
+
 func (l *Logger) DEBUG(format string, arr ...interface{}) {
 	arr, err := splitError(arr...)
 	msg := fmt.Sprintf(format, arr...)
@@ -150,16 +159,7 @@ func (l *Logger) DEBUG(format string, arr ...interface{}) {
 		Level:   DebugLevel,
 		Message: msg,
 	}
-	l.internalLogger.print(entry)
-}
-
-func (l *Logger) Printf(format string, arr ...interface{}) (int, error) {
-	msg := fmt.Sprintf(format, arr...)
-	return l.internalLogger.write([]byte(msg))
-}
-
-func (l *Logger) Write(p []byte) (n int, err error) {
-	return l.internalLogger.write(p)
+	l.internalLogger.formatWrite(entry)
 }
 
 func (l *Logger) INFO(format string, arr ...interface{}) {
@@ -173,7 +173,7 @@ func (l *Logger) INFO(format string, arr ...interface{}) {
 		Level:   InfoLevel,
 		Message: msg,
 	}
-	l.internalLogger.print(entry)
+	l.internalLogger.formatWrite(entry)
 }
 
 func (l *Logger) WARN(format string, arr ...interface{}) {
@@ -187,7 +187,7 @@ func (l *Logger) WARN(format string, arr ...interface{}) {
 		Level:   WarnLevel,
 		Message: msg,
 	}
-	l.internalLogger.print(entry)
+	l.internalLogger.formatWrite(entry)
 }
 
 func (l *Logger) ERROR(format string, arr ...interface{}) {
@@ -201,7 +201,11 @@ func (l *Logger) ERROR(format string, arr ...interface{}) {
 		Level:   ErrorLevel,
 		Message: msg,
 	}
-	l.internalLogger.print(entry)
+	l.internalLogger.formatWrite(entry)
+}
+
+func (l *Logger) Level() Level {
+	return l.internalLogger.level
 }
 
 func (l *Logger) GetLogger(name string) *Logger {

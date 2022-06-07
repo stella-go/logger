@@ -95,7 +95,7 @@ type DefaultFormatter struct{}
 
 func (*DefaultFormatter) Format(e *Entry) []byte {
 	ts := time.Now().Format("06-01-02.15:04:05.000")
-	ts = ts + "00000000000000000000000"
+	ts = ts + "000000000000000000000"
 	timestamp := ts[:21]
 	goroutine := gid()
 	msg := fmt.Sprintf("%s [%s] %s %s - %s\n", timestamp, goroutine, e.Level.String(), e.Tag, e.Message)
@@ -108,7 +108,7 @@ func gid() string {
 	b = bytes.TrimPrefix(b, []byte("goroutine "))
 	b = b[:bytes.IndexByte(b, ' ')]
 	n, _ := strconv.ParseUint(string(b), 10, 64)
-	return fmt.Sprintf("%s-%d", "goroutine", n)
+	return fmt.Sprintf("%s-%-4d", "goroutine", n)
 }
 
 type InternalLogger struct {

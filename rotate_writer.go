@@ -1,4 +1,4 @@
-// Copyright 2010-2021 the original author or authors.
+// Copyright 2010-2025 the original author or authors.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package logger
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"sort"
@@ -83,10 +82,19 @@ func (w *RotateWriter) rotate() {
 	if w.dest == os.Stdout || w.dest == os.Stderr {
 		return
 	}
-	fis, err := ioutil.ReadDir(w.config.FilePath)
+	entries, err := os.ReadDir(w.config.FilePath)
 	if err != nil {
 		print("ERROR", "Get file list error: %v", err)
 		return
+	}
+	fis := make([]os.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			print("ERROR", "Get file info error: %v", err)
+			return
+		}
+		fis = append(fis, info)
 	}
 	sfis := sfis(fis)
 	sort.Sort(sfis)

@@ -1,4 +1,4 @@
-// Copyright 2010-2021 the original author or authors.
+// Copyright 2010-2025 the original author or authors.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -109,6 +109,63 @@ func gid() string {
 	b = b[:bytes.IndexByte(b, ' ')]
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 	return fmt.Sprintf("%s-%-4d", "goroutine", n)
+}
+
+type PatternFormatter struct {
+	Pattern string
+}
+
+func (p *PatternFormatter) Format(e *Entry) []byte {
+	msg := make([]byte, 0, len(p.Pattern)+len(e.Message)+50) // Preallocate buffer
+	pattern := p.Pattern
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] == '%' && i+1 < len(pattern) {
+			switch pattern[i+1] {
+			case 'd':
+				start := i + 2
+				if pattern[start] == '{' {
+					end := strings.Index(pattern[start:], "}")
+					if end != -1 {
+						end += start
+						dateFormat := pattern[start+1 : end]
+						msg = append(msg, time.Now().Format(dateFormat)...)
+						i = end
+					} else {
+						ts := time.Now().Format("06-01-02.15:04:05.000")
+						ts = ts + "000000000000000000000"
+						msg = append(msg, ts[:21]...)
+						i++
+					}
+				} else {
+					ts := time.Now().Format("06-01-02.15:04:05.000")
+					ts = ts + "000000000000000000000"
+					msg = append(msg, ts[:21]...)
+					i++
+				}
+			case 'p':
+				msg = append(msg, e.Level.String()...)
+				i++
+			case 'c':
+				msg = append(msg, e.Tag...)
+				i++
+			case 'm':
+				msg = append(msg, e.Message...)
+				i++
+			case 'g':
+				msg = append(msg, gid()...)
+				i++
+			case '%':
+				msg = append(msg, '%')
+				i++
+			default:
+				msg = append(msg, pattern[i])
+			}
+		} else {
+			msg = append(msg, pattern[i])
+		}
+	}
+	msg = append(msg, '\n')
+	return msg
 }
 
 type InternalLogger struct {

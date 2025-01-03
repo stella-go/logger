@@ -196,8 +196,8 @@ func NewRotateWriter(filePath string, fileName string) (*RotateWriter, error) {
 		Daily:       true,
 		MaxFiles:    31,
 		MaxFileSize: 200 * FileSizeM,
-		FilePath:    filePath,
-		FileName:    fileName,
+		FilePath:    strings.TrimSpace(filePath),
+		FileName:    strings.TrimSpace(fileName),
 	}
 	return NewConfigRotateWriter(config)
 }

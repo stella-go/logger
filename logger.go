@@ -192,7 +192,7 @@ func (l *InternalLogger) write(p []byte) (int, error) {
 }
 
 type Logger struct {
-	loggerName     string
+	tag            string
 	internalLogger *InternalLogger
 }
 
@@ -212,7 +212,7 @@ func (l *Logger) DEBUG(format string, arr ...interface{}) {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     l.loggerName,
+		Tag:     l.tag,
 		Level:   DebugLevel,
 		Message: msg,
 	}
@@ -226,7 +226,7 @@ func (l *Logger) INFO(format string, arr ...interface{}) {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     l.loggerName,
+		Tag:     l.tag,
 		Level:   InfoLevel,
 		Message: msg,
 	}
@@ -240,7 +240,7 @@ func (l *Logger) WARN(format string, arr ...interface{}) {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     l.loggerName,
+		Tag:     l.tag,
 		Level:   WarnLevel,
 		Message: msg,
 	}
@@ -254,7 +254,7 @@ func (l *Logger) ERROR(format string, arr ...interface{}) {
 		msg = fmt.Sprintf("%s %v", msg, err)
 	}
 	entry := &Entry{
-		Tag:     l.loggerName,
+		Tag:     l.tag,
 		Level:   ErrorLevel,
 		Message: msg,
 	}
@@ -265,9 +265,13 @@ func (l *Logger) Level() Level {
 	return l.internalLogger.level
 }
 
-func (l *Logger) GetLogger(name string) *Logger {
+func (l *Logger) Tag() string {
+	return l.tag
+}
+
+func (l *Logger) GetLogger(tag string) *Logger {
 	return &Logger{
-		loggerName:     name,
+		tag:            tag,
 		internalLogger: l.internalLogger,
 	}
 }
@@ -294,7 +298,7 @@ func NewRotateRootLogger(level Level, filePath string, fileName string) *Logger 
 		lock:      sync.Mutex{},
 	}
 	return &Logger{
-		loggerName:     "ROOT",
+		tag:            "ROOT",
 		internalLogger: logger,
 	}
 }
@@ -307,7 +311,7 @@ func NewRootLogger(level Level, formatter LogFormatter, writer io.Writer) *Logge
 		lock:      sync.Mutex{},
 	}
 	return &Logger{
-		loggerName:     "ROOT",
+		tag:            "ROOT",
 		internalLogger: logger,
 	}
 }

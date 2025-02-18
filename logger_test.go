@@ -64,7 +64,7 @@ func (*NopFormatter) Format(e *logger.Entry) []byte {
 }
 
 func TestNewInternalLogger(t *testing.T) {
-	rootLogger := logger.NewRootLogger(logger.InfoLevel, &NopFormatter{}, os.Stdout)
+	rootLogger := logger.NewRootLogger(logger.InfoLevel, &logger.PatternFormatter{Pattern: "%l %m"}, os.Stdout)
 	logger := rootLogger.GetLogger("Bench")
 	logger.DEBUG("12345678901234567890123456789012")
 	logger.INFO("12345678901234567890123456789012")

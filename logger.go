@@ -110,11 +110,31 @@ func gid() string {
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 	return fmt.Sprintf("%s-%-4d", "goroutine", n)
 }
+func stack(depth int) (string, int) {
+	_, file, line, ok := runtime.Caller(depth)
+	if !ok {
+		return "", 0
+	}
+	return file, line
+}
 
 type PatternFormatter struct {
 	Pattern string
 }
 
+// Format formats the log entry according to the specified pattern.
+// The pattern can contain the following placeholders:
+//
+//	%d - Date and time of the log entry
+//	%p - Log level (e.g., INFO, DEBUG, ERROR)
+//	%c - Tag associated with the log entry
+//	%m - Log message
+//	%g - Goroutine ID
+//	%L - File name and line number of the log call
+//	%l - Short file name and line number of the log call
+//	%% - Literal percent sign
+//
+// The formatted log entry is returned as a byte slice.
 func (p *PatternFormatter) Format(e *Entry) []byte {
 	msg := make([]byte, 0, len(p.Pattern)+len(e.Message)+50) // Preallocate buffer
 	pattern := p.Pattern
@@ -122,26 +142,7 @@ func (p *PatternFormatter) Format(e *Entry) []byte {
 		if pattern[i] == '%' && i+1 < len(pattern) {
 			switch pattern[i+1] {
 			case 'd':
-				start := i + 2
-				if pattern[start] == '{' {
-					end := strings.Index(pattern[start:], "}")
-					if end != -1 {
-						end += start
-						dateFormat := pattern[start+1 : end]
-						msg = append(msg, time.Now().Format(dateFormat)...)
-						i = end
-					} else {
-						ts := time.Now().Format("06-01-02.15:04:05.000")
-						ts = ts + "000000000000000000000"
-						msg = append(msg, ts[:21]...)
-						i++
-					}
-				} else {
-					ts := time.Now().Format("06-01-02.15:04:05.000")
-					ts = ts + "000000000000000000000"
-					msg = append(msg, ts[:21]...)
-					i++
-				}
+				msg, i = p.appendDate(msg, pattern, i)
 			case 'p':
 				msg = append(msg, e.Level.String()...)
 				i++
@@ -154,6 +155,10 @@ func (p *PatternFormatter) Format(e *Entry) []byte {
 			case 'g':
 				msg = append(msg, gid()...)
 				i++
+			case 'L':
+				msg, i = p.appendFileLine(msg, pattern, i, false)
+			case 'l':
+				msg, i = p.appendFileLine(msg, pattern, i, true)
 			case '%':
 				msg = append(msg, '%')
 				i++
@@ -166,6 +171,50 @@ func (p *PatternFormatter) Format(e *Entry) []byte {
 	}
 	msg = append(msg, '\n')
 	return msg
+}
+
+func (p *PatternFormatter) appendDate(msg []byte, pattern string, i int) ([]byte, int) {
+	start := i + 2
+	if pattern[start] == '{' {
+		end := strings.Index(pattern[start:], "}")
+		if end != -1 {
+			end += start
+			dateFormat := pattern[start+1 : end]
+			msg = append(msg, time.Now().Format(dateFormat)...)
+			return msg, end
+		}
+	}
+	ts := time.Now().Format("06-01-02.15:04:05.000")
+	ts = ts + "000000000000000000000"
+	msg = append(msg, ts[:21]...)
+	return msg, i + 1
+}
+
+func (p *PatternFormatter) appendFileLine(msg []byte, pattern string, i int, short bool) ([]byte, int) {
+	start := i + 2
+	if pattern[start] == '{' {
+		end := strings.Index(pattern[start:], "}")
+		if end != -1 {
+			end += start
+			sdepth := pattern[start+1 : end]
+			depth, err := strconv.Atoi(sdepth)
+			if err != nil {
+				depth = 4
+			}
+			file, line := stack(depth)
+			if short {
+				file = file[strings.LastIndex(file, "/")+1:]
+			}
+			msg = append(msg, []byte(fmt.Sprintf("%s:%d", file, line))...)
+			return msg, end
+		}
+	}
+	file, line := stack(4)
+	if short {
+		file = file[strings.LastIndex(file, "/")+1:]
+	}
+	msg = append(msg, []byte(fmt.Sprintf("%s:%d", file, line))...)
+	return msg, i + 1
 }
 
 type InternalLogger struct {

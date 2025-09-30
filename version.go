@@ -14,4 +14,4 @@
 
 package logger
 
-const VERSION = "v1.0.9"
+const VERSION = "v1.1.1"

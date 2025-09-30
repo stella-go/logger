@@ -67,7 +67,6 @@ func (w *SyslogWriter) Write(p []byte) (int, error) {
 	pri := int(w.config.Facility*8) + int(w.config.Severity)
 	timestamp := time.Now().Format(time.RFC3339)
 	msg := fmt.Sprintf("<%d>1 %s %s %s - - - %s\n", pri, timestamp, w.config.Hostname, w.config.Tag, p)
-	fmt.Println("syslog msg:", msg)
 	return w.conn.Write([]byte(msg))
 }
 
